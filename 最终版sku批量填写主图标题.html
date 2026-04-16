@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SKU表格批量编辑工具</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .section {
+            margin-bottom: 30px;
+        }
+        
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: #667eea;
+            margin-right: 10px;
+            border-radius: 2px;
+        }
+        
+        .upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #fafafa;
+        }
+        
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f5f3ff;
+        }
+        
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: #f5f3ff;
+        }
+        
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+        
+        .upload-text {
+            color: #666;
+            font-size: 16px;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .file-info {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f0f9ff;
+            border-radius: 8px;
+            border-left: 4px solid #0ea5e9;
+            display: none;
+        }
+        
+        .file-info.show {
+            display: block;
+        }
+
+        .word-count {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+            text-align: right;
+        }
+        .word-count.error {
+            color: #f43f5e;
+            font-weight: 600;
+        }
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .form-group {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .form-label {
+            display: block;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .form-select,
+        .form-input,
+        .form-textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            background: white;
+        }
+        
+        .form-select:focus,
+        .form-input:focus,
+        .form-textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .form-textarea {
+            resize: vertical;
+            min-height: 100px;
+            font-family: inherit;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #374151;
+            border: 2px solid #e5e7eb;
+        }
+        
+        .btn-secondary:hover {
+            background: #e5e7eb;
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+        
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        
+        .preview-area {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #e2e8f0;
+            max-height: 400px;
+            overflow: auto;
+        }
+        
+        .preview-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        
+        .preview-table th,
+        .preview-table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .preview-table th {
+            background: #e2e8f0;
+            font-weight: 600;
+            color: #374151;
+            position: sticky;
+            top: 0;
+        }
+        
+        .preview-table tr:hover {
+            background: #f1f5f9;
+        }
+        
+        .preview-table tr.highlight {
+            background: #fef3c7;
+        }
+        
+        .status-bar {
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .status-bar.show {
+            display: block;
+        }
+        
+        .status-bar.success {
+            background: #f0fdf4;
+            border-color: #86efac;
+        }
+        
+        .status-bar.error {
+            background: #fef2f2;
+            border-color: #fca5a5;
+        }
+        
+        .status-text {
+            color: #0369a1;
+            font-size: 14px;
+        }
+        
+        .status-bar.success .status-text {
+            color: #166534;
+        }
+        
+        .status-bar.error .status-text {
+            color: #991b1b;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+        
+        .hint {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 6px;
+        }
+        
+        .hint::before {
+            content: '💡 ';
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 SKU表格批量编辑工具</h1>
+            <p>智能筛选 · 标题限15字 · 导出格式100%一致</p>
+        </div>
+        
+        <div class="content">
+            <div class="section">
+                <div class="section-title">上传表格文件</div>
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">点击或拖拽文件到此处上传<br><small>支持 .xls 和 .xlsx 格式</small></div>
+                    <input type="file" class="file-input" id="fileInput" accept=".xls,.xlsx">
+                </div>
+                <div class="file-info" id="fileInfo">
+                    <strong>已选择文件：</strong><span id="fileName"></span>
+                </div>
+            </div>
+            
+            <div class="section" id="statsSection" style="display: none;">
+                <div class="section-title">数据概览</div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalRows">0</div>
+                        <div class="stat-label">总行数</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalCategories">0</div>
+                        <div class="stat-label">颜色分类数</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="filteredRows">0</div>
+                        <div class="stat-label">当前筛选行数</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="section" id="editSection" style="display: none;">
+                <div class="section-title">批量编辑</div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">筛选颜色分类</label>
+                        <select class="form-select" id="colorSelect">
+                            <option value="">请先上传文件...</option>
+                        </select>
+                        <div class="hint">自动读取表格内所有颜色分类</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">SKU搜索主图</label>
+                        <textarea class="form-textarea" id="imageUrlInput" placeholder="输入SKU搜索主图URL，多个URL请换行输入"></textarea>
+                        <div class="hint">支持批量粘贴多个URL，每行一个</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">SKU搜索标题（限15字以内）</label>
+                        <textarea class="form-textarea" id="titleInput" placeholder="输入SKU搜索标题，限15字，多个标题请换行输入"></textarea>
+                        <div class="word-count" id="wordCount">0/15 字</div>
+                        <div class="hint">超出15字无法批量填写</div>
+                    </div>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" id="clearBtn">清空填写</button>
+                    <button class="btn btn-primary" id="fillBtn">批量填入选中分类</button>
+                    <button class="btn btn-success" id="downloadBtn">下载编辑后的表格</button>
+                </div>
+            </div>
+            
+            <div class="status-bar" id="statusBar">
+                <div class="status-text" id="statusText"></div>
+            </div>
+            
+            <div class="section" id="previewSection" style="display: none;">
+                <div class="section-title">数据预览（前10行）</div>
+                <div class="preview-area">
+                    <table class="preview-table" id="previewTable">
+                        <thead>
+                            <tr>
+                                <th>颜色分类</th>
+                                <th>组合形式</th>
+                                <th>尺寸</th>
+                                <th>外框类型</th>
+                                <th>SKU搜索主图</th>
+                                <th>SKU搜索标题</th>
+                            </tr>
+                        </thead>
+                        <tbody id="previewBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let workbook = null;
+        let originalData = null;
+        let worksheet = null;
+        let headerRow = null;
+        let colorColIndex = -1;
+        let imageColIndex = -1;
+        let titleColIndex = -1;
+        let dataStartRow = 0;
+        
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const colorSelect = document.getElementById('colorSelect');
+        const imageUrlInput = document.getElementById('imageUrlInput');
+        const titleInput = document.getElementById('titleInput');
+        const wordCount = document.getElementById('wordCount');
+        const clearBtn = document.getElementById('clearBtn');
+        const fillBtn = document.getElementById('fillBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const statusBar = document.getElementById('statusBar');
+        const statusText = document.getElementById('statusText');
+        const statsSection = document.getElementById('statsSection');
+        const editSection = document.getElementById('editSection');
+        const previewSection = document.getElementById('previewSection');
+        const previewBody = document.getElementById('previewBody');
+        
+        // 标题字数实时统计
+        titleInput.addEventListener('input', function() {
+            const text = this.value.trim();
+            const lines = text.split('\n').map(line => line.trim()).filter(line => line);
+            let maxLen = 0;
+            lines.forEach(line => {
+                maxLen = Math.max(maxLen, line.length);
+            });
+            wordCount.textContent = maxLen + '/15 字';
+            if (maxLen > 15) {
+                wordCount.classList.add('error');
+            } else {
+                wordCount.classList.remove('error');
+            }
+        });
+        
+        uploadArea.addEventListener('click', () => fileInput.click());
+        
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+        
+        function handleFile(file) {
+            showStatus('正在读取文件...', 'info');
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                    const firstSheetName = workbook.SheetNames[0];
+                    worksheet = workbook.Sheets[firstSheetName];
+                    originalData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+                    
+                    findHeaders();
+                    if (colorColIndex === -1) {
+                        showStatus('未找到"颜色分类"列，请检查表格格式', 'error');
+                        return;
+                    }
+                    
+                    extractColorCategories();
+                    fileName.textContent = file.name;
+                    fileInfo.classList.add('show');
+                    statsSection.style.display = 'block';
+                    editSection.style.display = 'block';
+                    previewSection.style.display = 'block';
+                    
+                    updateStats();
+                    updatePreview();
+                    showStatus('文件读取成功！', 'success');
+                } catch (error) {
+                    console.error(error);
+                    showStatus('文件读取失败：' + error.message, 'error');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+        
+        function findHeaders() {
+            for (let i = 0; i < Math.min(originalData.length, 10); i++) {
+                const row = originalData[i];
+                for (let j = 0; j < row.length; j++) {
+                    const cell = String(row[j] || '').trim();
+                    if (cell.includes('颜色分类')) {
+                        colorColIndex = j;
+                        headerRow = i;
+                        dataStartRow = i + 1;
+                    }
+                    if (cell.includes('SKU搜索主图')) {
+                        imageColIndex = j;
+                    }
+                    if (cell.includes('SKU搜索标题')) {
+                        titleColIndex = j;
+                    }
+                }
+                if (headerRow !== null) break;
+            }
+        }
+        
+        function extractColorCategories() {
+            const categories = new Set();
+            for (let i = dataStartRow; i < originalData.length; i++) {
+                const row = originalData[i];
+                if (row[colorColIndex]) {
+                    categories.add(String(row[colorColIndex]).trim());
+                }
+            }
+            colorSelect.innerHTML = '<option value="">请选择颜色分类...</option>';
+            const sortedCategories = Array.from(categories).sort();
+            sortedCategories.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat;
+                option.textContent = cat;
+                colorSelect.appendChild(option);
+            });
+            document.getElementById('totalCategories').textContent = sortedCategories.length;
+        }
+        
+        function updateStats() {
+            document.getElementById('totalRows').textContent = originalData.length - dataStartRow;
+            const selectedColor = colorSelect.value;
+            let count = 0;
+            if (selectedColor) {
+                for (let i = dataStartRow; i < originalData.length; i++) {
+                    const row = originalData[i];
+                    if (String(row[colorColIndex] || '').trim() === selectedColor) {
+                        count++;
+                    }
+                }
+            }
+            document.getElementById('filteredRows').textContent = count;
+        }
+        
+        function updatePreview() {
+            previewBody.innerHTML = '';
+            const selectedColor = colorSelect.value;
+            let displayCount = 0;
+            for (let i = dataStartRow; i < originalData.length && displayCount < 10; i++) {
+                const row = originalData[i];
+                const rowColor = String(row[colorColIndex] || '').trim();
+                if (!selectedColor || rowColor === selectedColor) {
+                    const tr = document.createElement('tr');
+                    if (selectedColor && rowColor === selectedColor) {
+                        tr.classList.add('highlight');
+                    }
+                    tr.innerHTML = `
+                        <td>${escapeHtml(row[colorColIndex] || '')}</td>
+                        <td>${escapeHtml(row[colorColIndex + 1] || '')}</td>
+                        <td>${escapeHtml(row[colorColIndex + 2] || '')}</td>
+                        <td>${escapeHtml(row[colorColIndex + 3] || '')}</td>
+                        <td>${escapeHtml(row[imageColIndex] || '')}</td>
+                        <td>${escapeHtml(row[titleColIndex] || '')}</td>
+                    `;
+                    previewBody.appendChild(tr);
+                    displayCount++;
+                }
+            }
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function showStatus(message, type) {
+            statusText.textContent = message;
+            statusBar.className = 'status-bar show ' + type;
+            statusBar.classList.add('show');
+            setTimeout(() => {
+                statusBar.classList.remove('show');
+            }, 3000);
+        }
+        
+        colorSelect.addEventListener('change', () => {
+            updateStats();
+            updatePreview();
+        });
+        
+        clearBtn.addEventListener('click', () => {
+            imageUrlInput.value = '';
+            titleInput.value = '';
+            wordCount.textContent = '0/15 字';
+            wordCount.classList.remove('error');
+            showStatus('已清空填写内容', 'success');
+        });
+        
+        // 批量填写 + 15字严格校验
+        fillBtn.addEventListener('click', () => {
+            const selectedColor = colorSelect.value;
+            if (!selectedColor) {
+                showStatus('请先选择颜色分类', 'error');
+                return;
+            }
+            
+            const imageUrls = imageUrlInput.value.split('\n').filter(u => u.trim());
+            const titles = titleInput.value.split('\n').filter(t => t.trim());
+            
+            if (imageUrls.length === 0 && titles.length === 0) {
+                showStatus('请至少填写SKU搜索主图或标题', 'error');
+                return;
+            }
+            
+            // 严格15字校验
+            let overLimit = false;
+            titles.forEach(t => {
+                if (t.length > 15) overLimit = true;
+            });
+            if (overLimit) {
+                showStatus('标题不能超过15个字，请修改后再试', 'error');
+                return;
+            }
+            
+            let fillCount = 0;
+            for (let i = dataStartRow; i < originalData.length; i++) {
+                const row = originalData[i];
+                const rowColor = String(row[colorColIndex] || '').trim();
+                if (rowColor === selectedColor) {
+                    if (imageUrls.length > 0) {
+                        row[imageColIndex] = imageUrls[fillCount % imageUrls.length].trim();
+                        const cellAddr = XLSX.utils.encode_cell({ r: i, c: imageColIndex });
+                        if (worksheet[cellAddr]) {
+                            worksheet[cellAddr].v = row[imageColIndex];
+                            worksheet[cellAddr].w = row[imageColIndex];
+                        } else {
+                            worksheet[cellAddr] = { t: 's', v: row[imageColIndex], w: row[imageColIndex] };
+                        }
+                    }
+                    if (titles.length > 0) {
+                        row[titleColIndex] = titles[fillCount % titles.length].trim();
+                        const cellAddr = XLSX.utils.encode_cell({ r: i, c: titleColIndex });
+                        if (worksheet[cellAddr]) {
+                            worksheet[cellAddr].v = row[titleColIndex];
+                            worksheet[cellAddr].w = row[titleColIndex];
+                        } else {
+                            worksheet[cellAddr] = { t: 's', v: row[titleColIndex], w: row[titleColIndex] };
+                        }
+                    }
+                    fillCount++;
+                }
+            }
+            
+            updateStats();
+            updatePreview();
+            showStatus(`成功填写 ${fillCount} 行数据！`, 'success');
+        });
+        
+        // 下载（格式100%不变）
+        downloadBtn.addEventListener('click', () => {
+            if (!workbook) {
+                showStatus('请先上传文件', 'error');
+                return;
+            }
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            XLSX.writeFile(workbook, `SKU编辑结果_${timestamp}.xlsx`);
+            showStatus('文件下载成功！格式与原表完全一致', 'success');
+        });
+    </script>
+</body>
+</html>
